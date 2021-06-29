@@ -8,6 +8,8 @@ import android.content.Context;
 import android.net.http.SslError;
 import android.os.Build;
 import android.os.Handler;
+import android.os.Parcelable;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -21,7 +23,7 @@ import android.webkit.WebView;
 import android.widget.FrameLayout;
 import android.provider.MediaStore;
 
-import androidx.core.content.FileProvider;
+//import androidx.core.content.FileProvider;
 
 import android.database.Cursor;
 import android.provider.OpenableColumns;
@@ -219,21 +221,29 @@ class WebviewManager {
                 mUploadMessageArray = filePathCallback;
 
                 final String[] acceptTypes = getSafeAcceptedTypes(fileChooserParams);
+
                 List<Intent> intentList = new ArrayList<Intent>();
                 fileUri = null;
                 videoUri = null;
-                if (acceptsImages(acceptTypes)) {
+                final Intent fileIntent = new Intent();
+                fileIntent.setType("*/*");
+                fileIntent.setAction(Intent.ACTION_OPEN_DOCUMENT);
+                fileIntent.addCategory(Intent.CATEGORY_OPENABLE);
+                intentList.add(fileIntent);
+
+//                if (acceptsImages(acceptTypes)) {
                     Intent takePhotoIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
                     fileUri = getOutputFilename(MediaStore.ACTION_IMAGE_CAPTURE);
                     takePhotoIntent.putExtra(MediaStore.EXTRA_OUTPUT, fileUri);
                     intentList.add(takePhotoIntent);
-                }
-                if (acceptsVideo(acceptTypes)) {
+//                }
+//                if (acceptsVideo(acceptTypes)) {
                     Intent takeVideoIntent = new Intent(MediaStore.ACTION_VIDEO_CAPTURE);
                     videoUri = getOutputFilename(MediaStore.ACTION_VIDEO_CAPTURE);
                     takeVideoIntent.putExtra(MediaStore.EXTRA_OUTPUT, videoUri);
                     intentList.add(takeVideoIntent);
-                }
+//                }
+
                 Intent contentSelectionIntent;
                 if (Build.VERSION.SDK_INT >= 21) {
                     final boolean allowMultiple = fileChooserParams.getMode() == FileChooserParams.MODE_OPEN_MULTIPLE;
@@ -246,8 +256,11 @@ class WebviewManager {
                 }
                 Intent[] intentArray = intentList.toArray(new Intent[intentList.size()]);
 
-                Intent chooserIntent = new Intent(Intent.ACTION_CHOOSER);
-                chooserIntent.putExtra(Intent.EXTRA_INTENT, contentSelectionIntent);
+//                Intent chooserIntent = new Intent(Intent.ACTION_CHOOSER);
+                Intent chooserIntent = Intent.createChooser(takeVideoIntent, "Chọn Ảnh/Video");
+//                chooserIntent.putExtra(Intent.EXTRA_INTENT, contentSelectionIntent);
+//                chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Intent[]{takeVideoIntent});
+//                chooserIntent.putExtra(Intent.EXTRA_TITLE, new Intent[]{fileIntent});
                 chooserIntent.putExtra(Intent.EXTRA_INITIAL_INTENTS, intentArray);
                 activity.startActivityForResult(chooserIntent, FILECHOOSER_RESULTCODE);
                 return true;
@@ -287,7 +300,9 @@ class WebviewManager {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return FileProvider.getUriForFile(context, packageName + ".fileprovider", capturedFile);
+//        return FileProvider.getUriForFile(context, packageName + ".fileprovider", capturedFile);
+        return FlutterWebviewPluginFileProvider.getUriForFile(context, packageName + ".fileprovider", capturedFile);
+
     }
 
     private File createCapturedFile(String prefix, String suffix) throws IOException {
@@ -298,11 +313,11 @@ class WebviewManager {
     }
 
     private Boolean acceptsImages(String[] types) {
-        return isArrayEmpty(types) || arrayContainsString(types, "image");
+        return isArrayEmpty(types) || arrayContainsString(types, "image") || arrayContainsString(types, ".jpg");
     }
 
     private Boolean acceptsVideo(String[] types) {
-        return isArrayEmpty(types) || arrayContainsString(types, "video");
+        return isArrayEmpty(types) || arrayContainsString(types, "video") || arrayContainsString(types, ".mp4");
     }
 
     private Boolean arrayContainsString(String[] array, String pattern) {
